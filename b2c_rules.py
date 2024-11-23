@@ -27,7 +27,7 @@ UNWIND labels(a) AS a_lbls
 UNWIND labels(i) AS i_lbls
 WITH DISTINCT a, 
     a.name AS act_name, 
-    CASE WHEN a_lbls IN ['B2C', 'demo', 'Action'] THEN '' 
+    CASE WHEN a_lbls IN ['B2C', 'demo', 'Action', '{user_label}'] THEN '' 
         ELSE a_lbls END AS act_type,
     i.name AS i_name,
     i.codename AS i_codename,
