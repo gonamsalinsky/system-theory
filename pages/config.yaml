@@ -16,6 +16,10 @@ credentials:
       email: demo@mail.ru
       name: Demo
       password: $2b$12$fDLA7BP.A9xnE07lmQfpg.lV8ildJDb.oSUmj6psZ.VbhXxPrF6V.
+    demo111:
+      email: demo111@mail.ru
+      name: demo111
+      password: $2b$12$uAD8x.qwiJfgpD/FMIJbk.jZ1VwAfZ/meJcupgWAFguHQzPtY10JW
     test:
       email: test@test.test
       name: test
