@@ -39,7 +39,7 @@ def get_all_subclasses(ni, res: list):
 
 
 def get_text_input_value(lbl, values):
-    v = st.text_input(lbl)
+    v = st.text_input(lbl).replace('"', '')
     values.append(v)
 
 
@@ -304,7 +304,7 @@ if __name__ == '__main__':
         config['preauthorized']
     )
 
-    name, authentication_status, username = authenticator.login('Login', 'main')
+    name, authentication_status, username = authenticator.login(form_name='Login', location='main')
 
     if st.session_state["authentication_status"]:
         tab1, tab2 = st.tabs(["Робот", "B2C"])

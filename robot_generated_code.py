@@ -9,35 +9,7 @@ def perform_switch_case(state, t, turn):
     if state == "INIT":
         if True:
             state = "UP"
-            t.setheading(90)  # Поворот в сторону движения вперед
-            return state, turn
-    if state == "RIGHT":
-        if x >= turn:
-            state = "DOWN"
-            t.setheading(270)  # Поворот в сторону движения назад
-            return state, turn
-        if x < turn:
-            state = "RIGHT"
-            t.forward(10)  # Перемещение
-            return state, turn
-    if state == "DOWN":
-        if y <= -turn:
-            state = "LEFT"
-            t.setheading(180)  # Поворот в сторону движения влево
-            return state, turn
-        if y > -turn:
-            state = "DOWN"
-            t.forward(10)  # Перемещение
-            return state, turn
-    if state == "LEFT":
-        if x <= -turn:
-            state = "UP"
-            turn += 1  # Начало следующего витка
-            t.setheading(90)  # Поворот в сторону движения вперед
-            return state, turn
-        if x > -turn:
-            state = "LEFT"
-            t.forward(10)  # Перемещение
+            t.setheading(90)  # разворот в сторону движения вперед
             return state, turn
     if state == "UP":
         if turn > num_turns:
@@ -45,11 +17,39 @@ def perform_switch_case(state, t, turn):
             return state, turn
         if y >= turn:
             state = "RIGHT"
-            t.setheading(0)  # Поворот в сторону движения вправо
+            t.setheading(0)  # разворот в сторону движения вправо
             return state, turn
         if y < turn:
             state = "UP"
-            t.forward(10)  # Перемещение
+            t.forward(10)  # перемещение
+            return state, turn
+    if state == "RIGHT":
+        if x >= turn:
+            state = "DOWN"
+            t.setheading(270)  # разворот в сторону движения вниз
+            return state, turn
+        if x < turn:
+            state = "RIGHT"
+            t.forward(10)  # перемещение
+            return state, turn
+    if state == "DOWN":
+        if y <= -turn:
+            state = "LEFT"
+            t.setheading(180)  # разворот в сторону движения влево
+            return state, turn
+        if y > -turn:
+            state = "DOWN"
+            t.forward(10)  # перемещение
+            return state, turn
+    if state == "LEFT":
+        if x <= -turn:
+            state = "UP"
+            t.setheading(90)  # разворот в сторону движения вперед
+            turn = turn + 1  # начало нового витка
+            return state, turn
+        if x > -turn:
+            state = "LEFT"
+            t.forward(10)  # перемещение
             return state, turn
 
 
