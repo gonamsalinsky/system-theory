@@ -303,7 +303,7 @@ if __name__ == '__main__':
         config['cookie']['expiry_days'],
     )
 
-    name, authentication_status, username = authenticator.login(form_name='Login', location='main')
+    name, authentication_status, username = authenticator.login()
 
     if st.session_state["authentication_status"]:
         tab1, tab2 = st.tabs(["Робот", "B2C"])
