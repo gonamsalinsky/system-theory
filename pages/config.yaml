@@ -1,6 +1,6 @@
 cookie:
-  expiry_days: 0
-  key: some_signature_key
+  expiry_days: 30 # Рекомендую поставить не 0, а 30, чтобы куки сохранялись
+  key: some_signature_key # Для безопасности лучше заменить на свою случайную строку
   name: some_cookie_name
 credentials:
   usernames:
@@ -28,6 +28,10 @@ credentials:
       email: test1@test.test
       name: test1
       password: $2b$12$5EiIdDxkiqlh9kYKD9leXOLdqgWvWSXLTrbSmTidRAIRitI4o.6C6
-preauthorized:
-  emails:
-  - melsby@gmail.com
+  # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+  preauthorized:
+    emails:
+    - melsby@gmail.com
+    - imil_khayrullin@mail.ru # ДОБАВЬ СЮДА СВОЙ EMAIL, ЧТОБЫ ПОЛУЧИТЬ ДОСТУП
+    - alex.zorg.1@mail.ru
+  # --- КОНЕЦ ИЗМЕНЕНИЙ ---
