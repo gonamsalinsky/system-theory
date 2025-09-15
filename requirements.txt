@@ -1,8 +1,9 @@
+streamlit
+streamlit-authenticator
+streamlit-agraph
 neo4j
 pandas
+pyyaml
 python-dotenv
-PyYAML
-streamlit
-streamlit_agraph
-streamlit_authenticator
 jinja2
+csnake
