@@ -1,4 +1,3 @@
-graphviz
 neo4j
 pandas
 python-dotenv
@@ -6,5 +5,4 @@ PyYAML
 streamlit
 streamlit_agraph
 streamlit_authenticator
-csnake
 jinja2
