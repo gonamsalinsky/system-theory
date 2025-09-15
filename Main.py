@@ -301,7 +301,6 @@ if __name__ == '__main__':
         config['cookie']['name'],
         config['cookie']['key'],
         config['cookie']['expiry_days'],
-        config['preauthorized']
     )
 
     name, authentication_status, username = authenticator.login(form_name='Login', location='main')
