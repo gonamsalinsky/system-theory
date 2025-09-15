@@ -292,20 +292,37 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
             st.experimental_rerun()
 
 
+# --- НАЧАЛО ЗАМЕНЫ ---
+
 if __name__ == '__main__':
+    # Загружаем конфигурацию из файла
     with open('pages/config.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
 
+    # Инициализируем аутентификатор с новой, правильной конфигурацией
     authenticator = stauth.Authenticate(
         config['credentials'],
         config['cookie']['name'],
         config['cookie']['key'],
-        config['cookie']['expiry_days'],
+        config['cookie']['expiry_days']
     )
 
-    name, authentication_status, username = authenticator.login()
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
+    # Вызываем login(). Он ничего не возвращает, а только обновляет st.session_state
+    authenticator.login()
 
+    # Теперь мы проверяем статус, обращаясь напрямую к st.session_state
     if st.session_state["authentication_status"]:
+        # Получаем имя пользователя из session_state для дальнейшей работы
+        username = st.session_state["username"]
+        
+        # --- ВАЖНОЕ УЛУЧШЕНИЕ: Кнопка Выхода ---
+        # Переносим кнопку выхода наверх, в боковую панель, для удобства
+        with st.sidebar:
+            st.write(f'Добро пожаловать, *{st.session_state["name"]}*')
+            authenticator.logout('Выйти', 'sidebar')
+
+        # Основной интерфейс с вкладками
         tab1, tab2 = st.tabs(["Робот", "B2C"])
         with tab1:
             with st.expander("Варианты заданий"):
@@ -319,7 +336,6 @@ if __name__ == '__main__':
             st.header("Генерация кода на основе модели")
             generate_btn = st.button("Сгенерировать код", key='generate_code_robot')
             if generate_btn:
-                # st.code(get_code(conn, username), language='c')
                 st.code(get_template(conn, username), language='python')
 
         with tab2:
@@ -335,9 +351,10 @@ if __name__ == '__main__':
             generate_b2c_btn = st.button("Сгенерировать документацию", key='generate_b2c')
             if generate_b2c_btn:
                 st.markdown(get_events(conn, username))
-        authenticator.logout('Выйти', 'main', key='unique_key')
 
     elif st.session_state["authentication_status"] is False:
-        st.error('Username/password is incorrect')
+        st.error('Имя пользователя или пароль неверны')
     elif st.session_state["authentication_status"] is None:
-        st.warning('Please enter your username and password')
+        st.warning('Пожалуйста, введите имя пользователя и пароль')
+
+# --- КОНЕЦ ЗАМЕНЫ ---
