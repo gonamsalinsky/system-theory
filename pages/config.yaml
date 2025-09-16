@@ -1,37 +1,11 @@
 cookie:
-  expiry_days: 30 # Рекомендую поставить не 0, а 30, чтобы куки сохранялись
-  key: some_signature_key # Для безопасности лучше заменить на свою случайную строку
-  name: some_cookie_name
+  expiry_days: 30
+  key: a_truly_unique_and_random_key # Замени на свою случайную строку
+  name: ots_auth_cookie
 credentials:
-  usernames:
-    1_test:
-      email: test2@test.test
-      name: 1_test
-      password: $2b$12$HCQLysn5KcXtTIycaWBFAu/n5/Nk5L0P.v0CVS3pYOQI9jDPpunJG
-    anutishna:
-      email: a.push@gmail.com
-      name: Anna K
-      password: $2b$12$5DQgvTuNdPR4J/X0wvL27uz.0lbBcJZ4rfwTIvRCXoTpVNeJPVUxi
-    demo:
-      email: demo@mail.ru
-      name: Demo
-      password: $2b$12$fDLA7BP.A9xnE07lmQfpg.lV8ildJDb.oSUmj6psZ.VbhXxPrF6V.
-    demo111:
-      email: demo111@mail.ru
-      name: demo111
-      password: $2b$12$uAD8x.qwiJfgpD/FMIJbk.jZ1VwAfZ/meJcupgWAFguHQzPtY10JW
-    test:
-      email: test@test.test
-      name: test
-      password: $2b$12$8b7t3RKptW9o76S0Ao1CXuPOtYq6wUFUr50Bk05DW1a5qo8Z9VKSW
-    test1:
-      email: test1@test.test
-      name: test1
-      password: $2b$12$5EiIdDxkiqlh9kYKD9leXOLdqgWvWSXLTrbSmTidRAIRitI4o.6C6
-  # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+  usernames: {} # Пользователи будут добавляться сюда после регистрации.
   preauthorized:
     emails:
-    - melsby@gmail.com
-    - imil_khayrullin@mail.ru # ДОБАВЬ СЮДА СВОЙ EMAIL, ЧТОБЫ ПОЛУЧИТЬ ДОСТУП
     - alex.zorg.1@mail.ru
-  # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    - imil_khayrullin@mail.ru
+    - gonamsalinsky@gmail.com
