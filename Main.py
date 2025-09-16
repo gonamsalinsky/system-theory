@@ -295,11 +295,15 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
 # --- НАЧАЛО ЗАМЕНЫ ---
 
 if __name__ == '__main__':
-    # Загружаем конфигурацию из файла
-    with open('pages/config.yaml') as file:
-        config = yaml.load(file, Loader=SafeLoader)
+    # Загружаем конфигурацию
+    try:
+        with open('pages/config.yaml') as file:
+            config = yaml.load(file, Loader=SafeLoader)
+    except FileNotFoundError:
+        st.error("Критическая ошибка: Файл 'pages/config.yaml' не найден.")
+        st.stop()
 
-    # Инициализируем аутентификатор с новой, правильной конфигурацией
+    # Инициализируем аутентификатор
     authenticator = stauth.Authenticate(
         config['credentials'],
         config['cookie']['name'],
@@ -307,17 +311,12 @@ if __name__ == '__main__':
         config['cookie']['expiry_days']
     )
 
-    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
-    # Вызываем login(). Он ничего не возвращает, а только обновляет st.session_state
+    # Вызываем единый виджет для входа/регистрации
     authenticator.login()
 
-    # Теперь мы проверяем статус, обращаясь напрямую к st.session_state
     if st.session_state["authentication_status"]:
-        # Получаем имя пользователя из session_state для дальнейшей работы
         username = st.session_state["username"]
         
-        # --- ВАЖНОЕ УЛУЧШЕНИЕ: Кнопка Выхода ---
-        # Переносим кнопку выхода наверх, в боковую панель, для удобства
         with st.sidebar:
             st.write(f'Добро пожаловать, *{st.session_state["name"]}*')
             authenticator.logout('Выйти', 'sidebar')
@@ -355,6 +354,15 @@ if __name__ == '__main__':
     elif st.session_state["authentication_status"] is False:
         st.error('Имя пользователя или пароль неверны')
     elif st.session_state["authentication_status"] is None:
-        st.warning('Пожалуйста, введите имя пользователя и пароль')
+        st.warning('Пожалуйста, войдите или зарегистрируйтесь.')
+        # --- ВАЖНО: Логика для регистрации ---
+        try:
+            if authenticator.register_user(form_name='Регистрация нового пользователя', preauthorization=True):
+                st.success('Пользователь успешно зарегистрирован! Теперь вы можете войти.')
+                # Обновляем config.yaml с новым пользователем
+                with open('pages/config.yaml', 'w') as file:
+                    yaml.dump(config, file, default_flow_style=False)
+        except Exception as e:
+            st.error(e)
 
 # --- КОНЕЦ ЗАМЕНЫ ---
