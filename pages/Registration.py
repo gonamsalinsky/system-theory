@@ -23,12 +23,9 @@ authenticator = stauth.Authenticate(
 )
 
 try:
-    # ИЗМЕНЕНО: Все параметры передаются явно по имени для устранения двусмысленности
-    if authenticator.register_user(
-        form_name='Регистрация нового пользователя',
-        location='main',
-        pre_authorization=False
-    ):
+    # ИЗМЕНЕНО: Все лишние параметры ('form_name', 'location') удалены
+    # в соответствии с документацией новой версии библиотеки.
+    if authenticator.register_user(pre_authorization=False):
         st.success('Пользователь успешно зарегистрирован')
         # Сохраняем обновленный конфиг только после успешной регистрации
         with open(config_path, 'w') as file:
