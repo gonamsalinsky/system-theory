@@ -1,0 +1,39 @@
+.
+├── b2c_description.md
+├── b2c_example.jpg
+├── b2c_generator.py
+├── b2c_nodes.py
+├── b2c_relations.py
+├── b2c_rules.py
+├── example_structure
+│   ├── demo.py
+│   ├── nodes.py
+│   ├── relations.py
+│   └── rules.py
+├── legacy
+│   ├── app.py
+│   ├── metamodel
+│   │   ├── concepts.csv
+│   │   └── relations.csv
+│   ├── metamodel_filler.py
+│   └── README.md
+├── Main.py
+├── neo4j_db_connector.py
+├── pages
+│   ├── config.yaml
+│   └── Registration.py
+├── README.md
+├── requirements.txt
+├── robot_description.md
+├── robot_generated_code.py
+├── robot_generator.py
+├── robot_generator_template.jinja2
+├── robot_generator_turtle.py
+├── robot_nodes.py
+├── robot_relations.py
+├── robot_rules.py
+├── robot_variants.png
+├── structure.txt
+└── tests.py
+
+4 directories, 32 files

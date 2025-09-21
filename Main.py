@@ -18,14 +18,20 @@ from b2c_generator import get_events
 import robot_nodes
 import robot_relations
 import robot_rules
-# from robot_generator import get_code
 from robot_generator_turtle import get_template
 
 
-load_dotenv()
-conn = nc.Neo4jConnection(uri=os.getenv("NEO4J_URI"),
-                          user=os.getenv("NEO4J_USERNAME"),
-                          pwd=os.getenv("NEO4J_PASSWORD"))
+# ИЗМЕНЕНО: Обернуто в try-except для обработки ошибок подключения при запуске
+try:
+    load_dotenv()
+    conn = nc.Neo4jConnection(uri=os.getenv("NEO4J_URI"),
+                              user=os.getenv("NEO4J_USERNAME"),
+                              pwd=os.getenv("NEO4J_PASSWORD"))
+    # Пробный запрос для проверки соединения
+    conn.query("MATCH (n) RETURN count(n) as count")
+except Exception as e:
+    st.error(f"Критическая ошибка: Не удалось подключиться к базе данных Neo4j. Проверьте переменные окружения и доступность базы. Ошибка: {e}")
+    st.stop()
 
 
 def get_all_subclasses(ni, res: list):
@@ -65,17 +71,15 @@ def get_node_form(selected_ntype, node_types_avail, user_label, task_label):
 
 def get_items_by_type(node_type, task_label, user_label):
     query = f"MATCH (a:{node_type}:{task_label}:{user_label}) RETURN a.name AS name"
-    print(query)
     db_nodes = conn.query(query)
-    print(db_nodes)
+    if db_nodes is None:
+        return []
     return [n["name"] for n in db_nodes]
 
 
 def get_node_class_from_db_result(db_node, task_label, user_label, node_module):
     """Получает экземпляра класса Nodes из элемента результата выполнения запроса, возвращающего список узлов"""
     nds = get_all_subclasses(node_module.NodeItem, [])
-    # print(db_node)
-    # print(nds)
     for node in nds:
         for label in db_node.labels:
             if label not in [user_label, task_label]:
@@ -95,6 +99,8 @@ def get_node_class(node_name, node_type, task_label, user_label, node_module):
     """Получение экземпляра класса Nodes на основе его названия и типа"""
     query = f'MATCH (a:{node_type}:{user_label}:{task_label} {{name: "{node_name}"}}) RETURN a'
     db_nodes = conn.query(query)
+    if not db_nodes:
+        return None
     return get_node_class_from_db_result(db_nodes[0]['a'], task_label, user_label, node_module)
 
 
@@ -105,7 +111,6 @@ def get_relation_form(selected_rtype, rel_types_avail, task_label, user_label, n
             for cnstr in rel.constraints:
                 main_node_type = cnstr[0]
                 related_node_type = cnstr[1]
-                # print(main_node_type, related_node_type)
                 with st.form(f"add_node_{main_node_type}_{related_node_type}"):
                     main_node_name = st.selectbox(main_node_type,
                                                   get_items_by_type(main_node_type, task_label, user_label),
@@ -119,11 +124,12 @@ def get_relation_form(selected_rtype, rel_types_avail, task_label, user_label, n
                                                    task_label, user_label, node_module)
                         related_node = get_node_class(related_node_name, related_node_type,
                                                       task_label, user_label, node_module)
-                        # print(main_node)
-                        # print(related_node)
-                        r = rel(main_node, related_node)
-                        r.db_create_relation(conn)
-                        st.caption('Связь успешно создана')
+                        if main_node and related_node:
+                            r = rel(main_node, related_node)
+                            r.db_create_relation(conn)
+                            st.caption('Связь успешно создана')
+                        else:
+                            st.error("Не удалось найти один из объектов. Связь не создана.")
 
 
 def get_color_dict(n_types, colors, task_label):
@@ -142,6 +148,10 @@ def get_graph(task_label, user_label):
     query_nodes = f'MATCH (a:{task_label}:{user_label}) RETURN a'
     db_nodes = conn.query(query_nodes)
 
+    if db_nodes is None:
+        st.warning("Не удалось получить данные для графа.")
+        return
+
     colors = ['#f6511d', '#ffb400', '#00a6ed', '#7fb800', '#0d2c54', '#a2a2a2']
 
     node_types = []
@@ -152,24 +162,22 @@ def get_graph(task_label, user_label):
                 node_types.append(label)
 
     color_dict = get_color_dict(node_types, colors, task_label)
-    # print(color_dict)
     for db_node in db_nodes:
         n_label = [l for l in db_node['a'].labels
                    if l not in [task_label, user_label,
                                 'View', 'Click', 'Scroll', 'Type', 'Button', 'Screen', 'Banner', 'Block']][0]
-        # print(n_label)
-        # print(db_node['a'])
         nodes.append(Node(id=db_node['a'].element_id,
                           title=str({i[0]: i[1] for i in db_node['a'].items() if i[0] != 'name'}),
                           label=db_node['a']['name'], size=25, color=color_dict[n_label]))
 
     query_rels = f'MATCH (:{task_label}:{user_label})-[r]-(:{task_label}:{user_label}) RETURN r'
     db_rels = conn.query(query_rels)
-    for db_rel in db_rels:
-        edges.append(Edge(source=db_rel['r'].nodes[0].element_id,
-                          label=db_rel['r']['name'],
-                          type="CURVE_SMOOTH",
-                          target=db_rel['r'].nodes[1].element_id))
+    if db_rels:
+        for db_rel in db_rels:
+            edges.append(Edge(source=db_rel['r'].nodes[0].element_id,
+                              label=db_rel['r']['name'],
+                              type="CURVE_SMOOTH",
+                              target=db_rel['r'].nodes[1].element_id))
 
     graph_config = Config(width=750,
                           height=500,
@@ -194,6 +202,8 @@ def get_relation_class_from_db_result(db_relation, source_node, target_node, rel
 
 def get_relations_from_db(user_label, task_label, node_module, relation_module):
     result = conn.query(f"MATCH (s:{user_label}:{task_label})-[r]->(t:{user_label}:{task_label}) RETURN s,t,r")
+    if not result:
+        return []
     rels_list = []
     for relation in result:
         source_node = get_node_class_from_db_result(relation['s'], task_label, user_label, node_module)
@@ -206,7 +216,6 @@ def get_relations_from_db(user_label, task_label, node_module, relation_module):
 def get_task_content(task_label, user_label, title, node_module, relations_module, rules_module):
     st.title(title)
     if user_label != 'demo':
-    # if True:
         st.header('Создание модели')
 
         st.subheader('Создание объектов')
@@ -215,7 +224,6 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
         node_dict = {}
         for i in node_types:
             node_dict[i.__name__] = i.class_name
-        # node_labels = [i.__name__ for i in node_types]
         selected_node_label = st.selectbox("Класс объекта", node_dict.values())
         selected_node_type = [i for i in node_dict if node_dict[i] == selected_node_label][0]
         get_node_form(selected_node_type, node_types, user_label, task_label)
@@ -225,7 +233,6 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
         rel_dict = {}
         for i in rel_types:
             rel_dict[i.__name__] = i.rel_name
-        # rel_labels = [i.__name__ for i in rel_types]
         selected_rel_label = st.selectbox("Тип связи", rel_dict.values())
         selected_rel_type = [i for i in rel_dict if rel_dict[i] == selected_rel_label][0]
         get_relation_form(selected_rel_type, rel_types, task_label, user_label, node_module)
@@ -242,33 +249,36 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
         st.caption(row['desc'])
 
     if user_label != 'demo':
-    # if True:
         rules_btn = st.button("Запустить правила", key="trigger_rules"+task_label)
         if rules_btn:
             for _, row in rules_df.iterrows():
                 if not row['code'] is None:
                     conn.query(row['code'])
-                    st.caption('Правила успешно выполнены')
-                    st.experimental_rerun()
+            st.caption('Правила успешно выполнены')
+            # ИЗМЕНЕНО: Замена устаревшего вызова
+            st.rerun()
         st.divider()
 
         st.header('Удаление')
 
         st.subheader('Удаление объектов')
         all_nodes_db = conn.query(f"MATCH (a:{task_label}:{user_label}) RETURN a")
-        if len(all_nodes_db) == 0:
+        if not all_nodes_db:
             st.text("В модели пока нет объектов.")
         else:
             all_nodes = [get_node_class_from_db_result(i['a'], task_label, user_label, node_module) for i in all_nodes_db]
             all_nodes_df = pd.DataFrame()
             all_nodes_df['name'] = [i.name for i in all_nodes]
             all_nodes_df['node'] = all_nodes
-            selected_node_name_for_removal = st.selectbox("Объект", all_nodes_df)
-            selected_node_index = all_nodes_df[all_nodes_df['name'] == selected_node_name_for_removal].index[0]
-            del_object_btn = st.button("Удалить объект", key="delete_node"+task_label)
-            if del_object_btn:
-                all_nodes_df.loc[selected_node_index]['node'].db_delete_node(conn)  # TODO Добавить подтверждаение
-                st.experimental_rerun()
+            # ИЗМЕНЕНО: В selectbox передается столбец 'name', а не весь DataFrame
+            selected_node_name_for_removal = st.selectbox("Объект", all_nodes_df['name'])
+            if selected_node_name_for_removal:
+                selected_node_index = all_nodes_df[all_nodes_df['name'] == selected_node_name_for_removal].index[0]
+                del_object_btn = st.button("Удалить объект", key="delete_node"+task_label)
+                if del_object_btn:
+                    all_nodes_df.loc[selected_node_index]['node'].db_delete_node(conn)
+                    # ИЗМЕНЕНО: Замена устаревшего вызова
+                    st.rerun()
 
         st.subheader('Удаление связи')
         all_relations = get_relations_from_db(user_label, task_label, node_module, relations_module)
@@ -278,23 +288,36 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
             all_rels_df = pd.DataFrame()
             all_rels_df['name'] = [f"{s.name} -> {r.rel_name} -> {t.name}" for s, t, r in all_relations]
             all_rels_df['relation'] = [r for _, _, r in all_relations]
-            selected_rel_for_removal = st.selectbox("Связь", all_rels_df)
-            selected_rel_index = all_rels_df[all_rels_df['name'] == selected_rel_for_removal].index[0]
-            del_rel_btn = st.button("Удалить связь", key="delete_relation"+task_label)
-            if del_rel_btn:
-                all_rels_df.loc[selected_rel_index]['relation'].db_delete_relation(conn)  # TODO Добавить подтверждаение
-                st.experimental_rerun()
+            # ИЗМЕНЕНО: В selectbox передается столбец 'name', а не весь DataFrame
+            selected_rel_for_removal = st.selectbox("Связь", all_rels_df['name'])
+            if selected_rel_for_removal:
+                selected_rel_index = all_rels_df[all_rels_df['name'] == selected_rel_for_removal].index[0]
+                del_rel_btn = st.button("Удалить связь", key="delete_relation"+task_label)
+                if del_rel_btn:
+                    all_rels_df.loc[selected_rel_index]['relation'].db_delete_relation(conn)
+                    # ИЗМЕНЕНО: Замена устаревшего вызова
+                    st.rerun()
 
         st.subheader('Удаление модели')
-        del_btn = st.button("Удалить модель", key="delete_model"+task_label)  # TODO Добавить подтверждаение
+        del_btn = st.button("Удалить модель", key="delete_model"+task_label)
         if del_btn:
             conn.query(f"MATCH (n:{task_label}:{user_label}) DETACH DELETE n")
-            st.experimental_rerun()
+            # ИЗМЕНЕНО: Замена устаревшего вызова
+            st.rerun()
 
 
 if __name__ == '__main__':
-    with open('pages/config.yaml') as file:
-        config = yaml.load(file, Loader=SafeLoader)
+    # ИЗМЕНЕНО: Надежное определение пути к файлу конфигурации
+    try:
+        # __file__ указывает на текущий файл, os.path.dirname получает директорию этого файла
+        # os.path.join собирает путь, безопасный для любой ОС
+        config_path = os.path.join(os.path.dirname(__file__), 'pages', 'config.yaml')
+        with open(config_path) as file:
+            config = yaml.load(file, Loader=SafeLoader)
+    except FileNotFoundError:
+        st.error(f"Критическая ошибка: Файл конфигурации 'config.yaml' не найден. Убедитесь, что он находится в папке 'pages'.")
+        st.stop()
+
 
     authenticator = stauth.Authenticate(
         config['credentials'],
@@ -304,15 +327,23 @@ if __name__ == '__main__':
         config['preauthorized']
     )
 
-    name, authentication_status, username = authenticator.login(form_name='Login', location='main')
+    # ИЗМЕНЕНО: Вызов authenticator.login() без устаревших параметров
+    name, authentication_status, username = authenticator.login()
 
     if st.session_state["authentication_status"]:
+        # ИЗМЕНЕНО: Вызов authenticator.logout() вынесен в сайдбар для удобства
+        with st.sidebar:
+            st.write(f'Добро пожаловать, *{st.session_state["name"]}*')
+            authenticator.logout('Выйти')
+
         tab1, tab2 = st.tabs(["Робот", "B2C"])
         with tab1:
             with st.expander("Варианты заданий"):
                 st.image("robot_variants.png", width=300)
-                with open("robot_description.md", mode='r') as f:
-                    st.markdown(f.read())
+                # ИЗМЕНЕНО: Добавлена проверка на существование файла
+                if os.path.exists("robot_description.md"):
+                    with open("robot_description.md", mode='r') as f:
+                        st.markdown(f.read())
 
             get_task_content('Robot', username, 'Моделирование траектории робота',
                              node_module=robot_nodes, relations_module=robot_relations, rules_module=robot_rules)
@@ -320,14 +351,16 @@ if __name__ == '__main__':
             st.header("Генерация кода на основе модели")
             generate_btn = st.button("Сгенерировать код", key='generate_code_robot')
             if generate_btn:
-                # st.code(get_code(conn, username), language='c')
                 st.code(get_template(conn, username), language='python')
 
         with tab2:
             with st.expander("Варианты заданий"):
-                with open("b2c_description.md", mode='r') as f:
-                    st.markdown(f.read())
-                st.image("b2c_example.jpg")
+                # ИЗМЕНЕНО: Добавлена проверка на существование файла
+                if os.path.exists("b2c_description.md"):
+                    with open("b2c_description.md", mode='r') as f:
+                        st.markdown(f.read())
+                if os.path.exists("b2c_example.jpg"):
+                    st.image("b2c_example.jpg")
 
             get_task_content('B2C', username, 'Аналитика пользовательского поведения в B2C-сервисе',
                              node_module=b2c_nodes, relations_module=b2c_relations, rules_module=b2c_rules)
@@ -336,9 +369,8 @@ if __name__ == '__main__':
             generate_b2c_btn = st.button("Сгенерировать документацию", key='generate_b2c')
             if generate_b2c_btn:
                 st.markdown(get_events(conn, username))
-        authenticator.logout('Выйти', 'main', key='unique_key')
 
     elif st.session_state["authentication_status"] is False:
-        st.error('Username/password is incorrect')
+        st.error('Имя пользователя или пароль неверны')
     elif st.session_state["authentication_status"] is None:
-        st.warning('Please enter your username and password')
+        st.warning('Пожалуйста, введите имя пользователя и пароль')
