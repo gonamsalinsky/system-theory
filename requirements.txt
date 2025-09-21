@@ -1,10 +1,11 @@
 graphviz==0.20.1
-# ИЗМЕНЕНО: Версия neo4j повышена до следующей стабильной для обхода ошибки установки
+# Версия neo4j стабильна
 neo4j>=5.9.0,<6.0.0
 pandas>=2.0.0,<3.0.0
 python-dotenv==1.0.0
-PyYAML==6.0
-# ИЗМЕНЕНО: Версии повышены и зафиксированы для совместимости со Streamlit Cloud
+# ИЗМЕНЕНО: Версия PyYAML повышена для совместимости с Python 3.13 в Streamlit Cloud
+PyYAML>=6.0.1,<7.0
+# Версии Streamlit и Authenticator стабильны
 streamlit>=1.30.0,<2.0.0
 streamlit-authenticator>=0.3.0,<0.4.0
 streamlit_agraph==0.0.45
