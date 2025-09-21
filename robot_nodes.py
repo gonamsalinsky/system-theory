@@ -42,7 +42,7 @@ class Predicate(NodeItem):
 
 class Action(NodeItem):
     class_name = "Действие"
-    class_description = "Действие системы"
+    class_description = "Действие, выполняемое один раз в момент перехода"
     labels = NodeItem.labels + ['Action']
 
     def __init__(self, name: str, user_label: str, codename: str):
@@ -61,7 +61,8 @@ class Transition(NodeItem):
         self.name = name
         self.labels = self.labels + [user_label]
         self.subquery = f":{':'.join(self.labels)} {{name: '{self.name}'}}"
-    
+
+# ИСПРАВЛЕНИЕ: Добавлен класс "Процесс"
 class Process(NodeItem):
     class_name = "Процесс"
     class_description = "Действие, выполняемое постоянно внутри состояния"
@@ -72,5 +73,3 @@ class Process(NodeItem):
         self.labels = self.labels + [user_label]
         self.codename = codename
         self.subquery = f":{':'.join(self.labels)} {{name: '{self.name}', codename: '{self.codename}'}}"
-
-

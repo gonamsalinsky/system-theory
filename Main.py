@@ -54,7 +54,7 @@ def get_node_form(selected_ntype, node_types_avail, user_label, task_label):
     for node in node_types_avail:
         if node.__name__ == selected_ntype:
             attrs = [i for i in node.__init__.__code__.co_varnames if i != 'self']
-            with st.form("add_node" + task_label):
+            with st.form("add_node" + task_label, clear_on_submit=True):
                 attr_values = []
                 for attr in attrs:
                     if attr == 'user_label':
@@ -90,7 +90,11 @@ def get_node_class_from_db_result(db_node, task_label, user_label, node_module):
                         if attr == 'user_label':
                             attr_values.append(user_label)
                         else:
-                            attr_values.append(db_node[attr])
+                            # Проверяем, есть ли атрибут в узле, прежде чем его получить
+                            if attr in db_node:
+                                attr_values.append(db_node[attr])
+                            else:
+                                attr_values.append(None) # или другое значение по умолчанию
                     return node(*attr_values)
     return None
 
@@ -111,25 +115,28 @@ def get_relation_form(selected_rtype, rel_types_avail, task_label, user_label, n
             for cnstr in rel.constraints:
                 main_node_type = cnstr[0]
                 related_node_type = cnstr[1]
-                with st.form(f"add_node_{main_node_type}_{related_node_type}"):
+                with st.form(f"add_rel_{main_node_type}_{related_node_type}_{rel.__name__}", clear_on_submit=True):
                     main_node_name = st.selectbox(main_node_type,
                                                   get_items_by_type(main_node_type, task_label, user_label),
-                                                  key=f'n1_{main_node_type}_{related_node_type}')
+                                                  key=f'n1_{main_node_type}_{related_node_type}_{rel.__name__}')
                     related_node_name = st.selectbox(related_node_type,
                                                      get_items_by_type(related_node_type, task_label, user_label),
-                                                     key=f'n2_{main_node_type}_{related_node_type}')
+                                                     key=f'n2_{main_node_type}_{related_node_type}_{rel.__name__}')
                     submitted = st.form_submit_button("Создать")
                     if submitted:
-                        main_node = get_node_class(main_node_name, main_node_type,
-                                                   task_label, user_label, node_module)
-                        related_node = get_node_class(related_node_name, related_node_type,
-                                                      task_label, user_label, node_module)
-                        if main_node and related_node:
-                            r = rel(main_node, related_node)
-                            r.db_create_relation(conn)
-                            st.caption('Связь успешно создана')
+                        if main_node_name and related_node_name:
+                            main_node = get_node_class(main_node_name, main_node_type,
+                                                       task_label, user_label, node_module)
+                            related_node = get_node_class(related_node_name, related_node_type,
+                                                          task_label, user_label, node_module)
+                            if main_node and related_node:
+                                r = rel(main_node, related_node)
+                                r.db_create_relation(conn)
+                                st.caption('Связь успешно создана')
+                            else:
+                                st.error("Не удалось найти один из объектов. Связь не создана.")
                         else:
-                            st.error("Не удалось найти один из объектов. Связь не создана.")
+                            st.warning("Пожалуйста, создайте необходимые объекты перед созданием связей.")
 
 
 def get_color_dict(n_types, colors, task_label):
@@ -152,32 +159,31 @@ def get_graph(task_label, user_label):
         st.warning("Не удалось получить данные для графа.")
         return
 
-    colors = ['#f6511d', '#ffb400', '#00a6ed', '#7fb800', '#0d2c54', '#a2a2a2']
+    colors = ['#f6511d', '#ffb400', '#00a6ed', '#7fb800', '#0d2c54', '#a2a2a2', '#8E44AD'] # Добавлен новый цвет
 
     node_types = []
     for db_node in db_nodes:
         n_labels = db_node['a'].labels
         for label in n_labels:
-            if label not in [task_label, user_label] and label not in node_types:
+            if label not in [task_label, user_label, 'Robot', 'B2C'] and label not in node_types:
                 node_types.append(label)
 
     color_dict = get_color_dict(node_types, colors, task_label)
     for db_node in db_nodes:
         n_label = [l for l in db_node['a'].labels
-                   if l not in [task_label, user_label,
+                   if l not in [task_label, user_label, 'Robot', 'B2C',
                                 'View', 'Click', 'Scroll', 'Type', 'Button', 'Screen', 'Banner', 'Block']][0]
         nodes.append(Node(id=db_node['a'].element_id,
                           title=str({i[0]: i[1] for i in db_node['a'].items() if i[0] != 'name'}),
-                          label=db_node['a']['name'], size=25, color=color_dict[n_label]))
+                          label=db_node['a']['name'], size=25, color=color_dict.get(n_label, '#a2a2a2')))
 
-    query_rels = f'MATCH (:{task_label}:{user_label})-[r]-(:{task_label}:{user_label}) RETURN r'
+    query_rels = f'MATCH (s:{task_label}:{user_label})-[r]->(t:{task_label}:{user_label}) RETURN r, s, t'
     db_rels = conn.query(query_rels)
     if db_rels:
         for db_rel in db_rels:
-            edges.append(Edge(source=db_rel['r'].nodes[0].element_id,
+            edges.append(Edge(source=db_rel['s'].element_id,
                               label=db_rel['r']['name'],
-                              type="CURVE_SMOOTH",
-                              target=db_rel['r'].nodes[1].element_id))
+                              target=db_rel['t'].element_id))
 
     graph_config = Config(width=750,
                           height=500,
@@ -209,7 +215,8 @@ def get_relations_from_db(user_label, task_label, node_module, relation_module):
         source_node = get_node_class_from_db_result(relation['s'], task_label, user_label, node_module)
         target_node = get_node_class_from_db_result(relation['t'], task_label, user_label, node_module)
         relation = get_relation_class_from_db_result(relation['r'], source_node, target_node, relation_module)
-        rels_list.append((source_node, target_node, relation))
+        if all([source_node, target_node, relation]):
+            rels_list.append((source_node, target_node, relation))
     return rels_list
 
 
@@ -255,7 +262,6 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
                 if not row['code'] is None:
                     conn.query(row['code'])
             st.caption('Правила успешно выполнены')
-            # ИЗМЕНЕНО: Замена устаревшего вызова
             st.rerun()
         st.divider()
 
@@ -266,19 +272,18 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
         if not all_nodes_db:
             st.text("В модели пока нет объектов.")
         else:
-            all_nodes = [get_node_class_from_db_result(i['a'], task_label, user_label, node_module) for i in all_nodes_db]
-            all_nodes_df = pd.DataFrame()
-            all_nodes_df['name'] = [i.name for i in all_nodes]
-            all_nodes_df['node'] = all_nodes
-            # ИЗМЕНЕНО: В selectbox передается столбец 'name', а не весь DataFrame
-            selected_node_name_for_removal = st.selectbox("Объект", all_nodes_df['name'])
-            if selected_node_name_for_removal:
-                selected_node_index = all_nodes_df[all_nodes_df['name'] == selected_node_name_for_removal].index[0]
-                del_object_btn = st.button("Удалить объект", key="delete_node"+task_label)
-                if del_object_btn:
-                    all_nodes_df.loc[selected_node_index]['node'].db_delete_node(conn)
-                    # ИЗМЕНЕНО: Замена устаревшего вызова
-                    st.rerun()
+            all_nodes = [get_node_class_from_db_result(i['a'], task_label, user_label, node_module) for i in all_nodes_db if get_node_class_from_db_result(i['a'], task_label, user_label, node_module) is not None]
+            if all_nodes:
+                all_nodes_df = pd.DataFrame()
+                all_nodes_df['name'] = [i.name for i in all_nodes]
+                all_nodes_df['node'] = all_nodes
+                selected_node_name_for_removal = st.selectbox("Объект", all_nodes_df['name'], key="delete_node_select")
+                if selected_node_name_for_removal:
+                    selected_node_index = all_nodes_df[all_nodes_df['name'] == selected_node_name_for_removal].index[0]
+                    del_object_btn = st.button("Удалить объект", key="delete_node"+task_label)
+                    if del_object_btn:
+                        all_nodes_df.loc[selected_node_index]['node'].db_delete_node(conn)
+                        st.rerun()
 
         st.subheader('Удаление связи')
         all_relations = get_relations_from_db(user_label, task_label, node_module, relations_module)
@@ -288,29 +293,23 @@ def get_task_content(task_label, user_label, title, node_module, relations_modul
             all_rels_df = pd.DataFrame()
             all_rels_df['name'] = [f"{s.name} -> {r.rel_name} -> {t.name}" for s, t, r in all_relations]
             all_rels_df['relation'] = [r for _, _, r in all_relations]
-            # ИЗМЕНЕНО: В selectbox передается столбец 'name', а не весь DataFrame
-            selected_rel_for_removal = st.selectbox("Связь", all_rels_df['name'])
+            selected_rel_for_removal = st.selectbox("Связь", all_rels_df['name'], key="delete_rel_select")
             if selected_rel_for_removal:
                 selected_rel_index = all_rels_df[all_rels_df['name'] == selected_rel_for_removal].index[0]
                 del_rel_btn = st.button("Удалить связь", key="delete_relation"+task_label)
                 if del_rel_btn:
                     all_rels_df.loc[selected_rel_index]['relation'].db_delete_relation(conn)
-                    # ИЗМЕНЕНО: Замена устаревшего вызова
                     st.rerun()
 
         st.subheader('Удаление модели')
         del_btn = st.button("Удалить модель", key="delete_model"+task_label)
         if del_btn:
             conn.query(f"MATCH (n:{task_label}:{user_label}) DETACH DELETE n")
-            # ИЗМЕНЕНО: Замена устаревшего вызова
             st.rerun()
 
 
 if __name__ == '__main__':
-    # ИЗМЕНЕНО: Надежное определение пути к файлу конфигурации
     try:
-        # __file__ указывает на текущий файл, os.path.dirname получает директорию этого файла
-        # os.path.join собирает путь, безопасный для любой ОС
         config_path = os.path.join(os.path.dirname(__file__), 'pages', 'config.yaml')
         with open(config_path) as file:
             config = yaml.load(file, Loader=SafeLoader)
@@ -327,11 +326,9 @@ if __name__ == '__main__':
         config['preauthorized']
     )
 
-    # ИЗМЕНЕНО: Вызов authenticator.login() без устаревших параметров
     name, authentication_status, username = authenticator.login()
 
     if st.session_state["authentication_status"]:
-        # ИЗМЕНЕНО: Вызов authenticator.logout() вынесен в сайдбар для удобства
         with st.sidebar:
             st.write(f'Добро пожаловать, *{st.session_state["name"]}*')
             authenticator.logout('Выйти')
@@ -339,8 +336,8 @@ if __name__ == '__main__':
         tab1, tab2 = st.tabs(["Робот", "B2C"])
         with tab1:
             with st.expander("Варианты заданий"):
-                st.image("robot_variants.png", width=300)
-                # ИЗМЕНЕНО: Добавлена проверка на существование файла
+                if os.path.exists("robot_variants.png"):
+                    st.image("robot_variants.png", width=300)
                 if os.path.exists("robot_description.md"):
                     with open("robot_description.md", mode='r') as f:
                         st.markdown(f.read())
@@ -355,7 +352,6 @@ if __name__ == '__main__':
 
         with tab2:
             with st.expander("Варианты заданий"):
-                # ИЗМЕНЕНО: Добавлена проверка на существование файла
                 if os.path.exists("b2c_description.md"):
                     with open("b2c_description.md", mode='r') as f:
                         st.markdown(f.read())
