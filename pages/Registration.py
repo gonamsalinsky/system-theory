@@ -23,13 +23,16 @@ authenticator = stauth.Authenticate(
 )
 
 try:
-    # ИЗМЕНЕНО: Добавлен обязательный параметр 'location'
-    authenticator.register_user('Регистрация нового пользователя', location='main', pre_authorization=False)
-    
-    # После успешной регистрации, сохраняем обновленный конфиг
-    with open(config_path, 'w') as file:
-        yaml.dump(config, file, default_flow_style=False)
-    st.success('Пользователь успешно зарегистрирован')
+    # ИЗМЕНЕНО: Все параметры передаются явно по имени для устранения двусмысленности
+    if authenticator.register_user(
+        form_name='Регистрация нового пользователя',
+        location='main',
+        pre_authorization=False
+    ):
+        st.success('Пользователь успешно зарегистрирован')
+        # Сохраняем обновленный конфиг только после успешной регистрации
+        with open(config_path, 'w') as file:
+            yaml.dump(config, file, default_flow_style=False)
 
 except Exception as e:
     st.error(e)
