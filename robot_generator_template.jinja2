@@ -6,22 +6,25 @@ def perform_switch_case(state, t, turn):
     y = round(t.position()[1] / 10)
     num_turns = 5
 
-    {% for state in state_list %}
-    if state == "{{ state }}":
-        {% for transition in state_list[state] %}
+    {% for state_codename in state_list %}
+    if state == "{{ state_codename }}":
+        {# СНАЧАЛА ВЫПОЛНЯЕМ ПРОЦЕССЫ, КОТОРЫЕ ПРОИСХОДЯТ ВНУТРИ СОСТОЯНИЯ #}
+        {% for process_code in state_list[state_codename].processes %}
+        {{ process_code }}  # {{ state_list[state_codename].processes[process_code] }}
+        {% endfor %}
+
+        {# ПОТОМ ПРОВЕРЯЕМ УСЛОВИЯ ДЛЯ ПЕРЕХОДА В ДРУГОЕ СОСТОЯНИЕ #}
+        {% for transition in state_list[state_codename].transitions %}
         if {{ transition.condition }}:
             state = "{{ transition.state_to }}"
-            {% for action in transition.actions_after %}
-            {% if ( (action.startswith('setheading')) or
-                    (action.startswith('forward')) ) %}
-            t.{{ action }}  # {{ transition.actions_after[action] }}
-            {% else %}
-            {{ action }}  # {{ transition.actions_after[action] }}
-            {% endif %}
+            {% for action_code in transition.actions_after %}
+            {{ action_code }}  # {{ transition.actions_after[action_code] }}
             {% endfor %}
             return state, turn
         {% endfor %}
+        return state, turn
     {% endfor %}
+    return state, turn
 
 
 def draw():
@@ -29,6 +32,7 @@ def draw():
     end_state = "{{ end_state }}"
     curr_state = start_state
     t = turtle.Turtle()
+    t.speed(0)
     turn = 1
 
     while curr_state != end_state:

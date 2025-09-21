@@ -67,3 +67,7 @@ class BePredicate(RelationItem):
 class Call(RelationItem):
     rel_name = "вызывать"
     constraints = [("Transition", "Action")]
+
+class ExecuteIn(RelationItem):
+    rel_name = "выполнять в"
+    constraints = [("State", "Process")]

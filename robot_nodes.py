@@ -61,5 +61,16 @@ class Transition(NodeItem):
         self.name = name
         self.labels = self.labels + [user_label]
         self.subquery = f":{':'.join(self.labels)} {{name: '{self.name}'}}"
+    
+class Process(NodeItem):
+    class_name = "Процесс"
+    class_description = "Действие, выполняемое постоянно внутри состояния"
+    labels = NodeItem.labels + ['Process']
+
+    def __init__(self, name: str, user_label: str, codename: str):
+        self.name = name
+        self.labels = self.labels + [user_label]
+        self.codename = codename
+        self.subquery = f":{':'.join(self.labels)} {{name: '{self.name}', codename: '{self.codename}'}}"
 
 
