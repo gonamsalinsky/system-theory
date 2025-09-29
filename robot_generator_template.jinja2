@@ -8,17 +8,17 @@ def perform_switch_case(state, t, turn):
 
     {% for state_codename in state_list %}
     if state == "{{ state_codename }}":
-        {# СНАЧАЛА ВЫПОЛНЯЕМ ПРОЦЕССЫ, КОТОРЫЕ ПРОИСХОДЯТ ВНУТРИ СОСТОЯНИЯ #}
+        {# ИСПРАВЛЕНИЕ: Добавлена функция .strip() для удаления случайных пробелов #}
         {% for process_code in state_list[state_codename].processes %}
-        {{ process_code }}  # {{ state_list[state_codename].processes[process_code] }}
+        {{ process_code.strip() }}  # {{ state_list[state_codename].processes[process_code] }}
         {% endfor %}
 
-        {# ПОТОМ ПРОВЕРЯЕМ УСЛОВИЯ ДЛЯ ПЕРЕХОДА В ДРУГОЕ СОСТОЯНИЕ #}
         {% for transition in state_list[state_codename].transitions %}
-        if {{ transition.condition }}:
+        if {{ transition.condition.strip() }}:
             state = "{{ transition.state_to }}"
+            {# ИСПРАВЛЕНИЕ: Добавлена функция .strip() для удаления случайных пробелов #}
             {% for action_code in transition.actions_after %}
-            {{ action_code }}  # {{ transition.actions_after[action_code] }}
+            {{ action_code.strip() }}  # {{ transition.actions_after[action_code] }}
             {% endfor %}
             return state, turn
         {% endfor %}
